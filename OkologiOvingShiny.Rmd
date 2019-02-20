@@ -1,0 +1,448 @@
+---
+title: "BIOS2100 Generell økologi, datalab 1: Populasjonsvekst"
+author: "Yngvild Vindenes"
+output: html_document
+runtime: shiny
+---
+
+<br>
+
+De to datalabene i BIOS2100 er ment som en hjelp til å forstå de delene av læreboka som omhandler populasjonsdynamikk og interaksjoner (konkurranse, parasittisme og predasjon). Appene er modifiserte versjoner av apper utviklet av Ottar N. Bjornstad (onb1@psu.edu; licensed under the Creative Commons attribution-noncommercial license (http://creativecommons.org/licenses/by-nc/3.0/). 
+
+
+
+
+```{r, echo=FALSE}
+
+#' display a number
+#' @param x A number
+#' @return y A number of class "test"
+#' @examples
+#' test(4)
+#' @export
+test<-function(x){y=x
+class(y)="test"
+ return(y)}
+ 
+ #' print a number of class "test"
+ # @param y an object of class "test"
+ #' @export
+ print.test=function(y){
+ cat("The value is ", y)
+ }
+
+Attr=c("ATTRIBUTION: This App was written by Ottar N. Bjornstad (onb1@psu.edu) and is licensed under the Creative Commons attribution-noncommercial license (http://creativecommons.org/licenses/by-nc/3.0/). Please share & remix non-commercially, mentioning its origin.")
+Attr2=c("ATTRIBUTION: This App was developed by Y. Vindenes from a Ricker model App by Ottar N. Bjornstad (onb1@psu.edu), licensed under the Creative Commons attribution-noncommercial license (http://creativecommons.org/licenses/by-nc/3.0/).")
+Attr3=c("ATTRIBUTION: This App was developed by Y. Vindenes.")
+
+```
+
+<br>
+
+###Oppgave 1: Eksponensiell vekst
+
+Modellen for eksponensiell vekst er beskrevet i Krebs,
+
+$$\frac{d N}{dt} = rN=(b-d)N$$
+
+Der $r$ er den instantane vekstraten, $b$ og $d$ er instantane fødsels- og dødsrater, og $N$ er populasjonsstørrelsen (antall individer). Det gir følgende likning for populasjonsvekst over tid:
+
+$$N_t = N_0e^{rt},$$
+der $N_t$ er populasjonsstørrelsen ved tid $t$, og $N_0$ er startverdien. Simuleringene under returnerer populasjonsveksten over tid. Du kan endre verdier av $r$, startpopulasjon $N$ og antall tidssteg $T_{max}$ i panelet til venstre. Bruk disse til å utforske modellen og til å svare på spørsmålene:
+
+
+<br>
+
+
+```{r, echo=FALSE}
+shinyApp(
+# This creates the User Interface (UI)
+ui = pageWithSidebar(
+headerPanel(""),
+sidebarPanel(
+sliderInput("r", "Intrinsic growth rate (r):", 0.03,
+              min =-.1, max = .4, step=.01),
+numericInput("N0", "Initial number N0:", 10,
+              min = 1, max = 200),
+numericInput("Tmax", "Tmax:", 100,
+              min = 1, max = 500)
+),
+
+mainPanel(tabsetPanel(
+  tabPanel("Simulation", plotOutput("plot1", height = 500)),
+  tabPanel("Details",
+    withMathJax(
+                helpText("MODEL:"),
+            helpText("$$N_{t+1} = N_t e^{r}$$"),
+            helpText("REFERENCE: Krebs chapter 9"),
+       helpText(eval(Attr2))
+)
+)
+)
+)
+),
+
+# This creates the 'behind the scenes' code (Server)
+server = function(input, output) {
+ekspon = function(r, length = 50, N0=10 ){
+  N =  rep(NA, length) #set up the empty vector of the right length
+  N[1] = N0 #setting the abundance at time 1 to N0
+  for(i in 2:length){ #iteratively updating the growth model.
+                    #next abundance is determined by previous abundance
+    N[i] =N[i-1]*exp(r)
+    }
+  return(N) #returning the simulated vector
+  }
+  output$plot1 <- renderPlot({
+    N= ekspon(r=input$r,   length=input$Tmax, N0=input$N0)
+    time = 1:input$Tmax
+    par(mfrow=c(1,1),las=0)
+     plot(N, xlab = "Time t", ylab = "Population size", type="l",lwd=2,main="Population size",ylim=c(0,max(N))) # making a time series plot
+     #mtext(expression(N[t]),side=2,line=2,las=1)
+   })
+},
+options = list(height = 600)
+)
+
+```
+
+<br>
+
+1. Hva er hovedantakelsene i den enkle modellen? For hvilke arter og situasjoner tror du modellen kan være en god tilnærming? 
+
+2. Hva kan du si om fødsels- og dødsraten i populasjonen når $r=0$, $r<0$ og $r>0$?
+
+3. En populasjon husmus vokser med vekstrate $r=0.03$ per dag. Hvor lang tid tar det før populasjonen er doblet?
+
+4. Hva må den årlige vekstraten være for at en populasjon som vokser eksponensielt skal fordobles i løpet av 50 år?
+
+5. Hvis vekstraten per tidssteg er stokastisk og normalfordelt med standardavvik $\sigma$, vil dette påvirke populasjonsveksten. På hvilken måte? Hva har det å si for gjennomsnittlig populasjonsvekst i det lange løp?
+
+
+
+<br>
+
+
+
+
+
+###Oppgave 2: Logistisk og $\theta$-logistisk vekst
+
+Modellen for logistisk vekst er beskrevet i Krebs (likning 9),
+
+$$\frac{d N}{dt} = rN \frac{K-N}{K},$$
+
+der $r$ er den iboende vekstraten (intrinsic growth rate) til populasjonen, $K$ er bærekapasiteten, og $N$ er populasjonsstørrelse. Modellen for $\theta$-logistisk vekst skalerer det siste leddet med en parameter $\theta$:
+
+$$\frac{d N}{dt} = rN \left(\frac{K-N}{K}\right)^\theta.$$
+Simuleringene under returnerer populasjonsveksten over tid, og per kapita vekstraten for ulike verdier av $r$, $K$, startpopulasjon $N_0$, parameteren $\theta$, og antall tidssteg $T_{max}$.  Bruk disse til å utforske modellen og til å svare på spørsmålene:
+
+```{r, echo=FALSE}
+
+#' Launch a shiny-app simulating the theta-logistic model
+#' @details
+#' Launch app for details
+#' @examples
+#' \dontrun{Ricker.app}
+#' @export
+shinyApp(
+# This creates the User Interface (UI)
+ui = pageWithSidebar(
+headerPanel(""),
+sidebarPanel(
+sliderInput("r", "Intrinsic growth rate (r):", 0.03,
+              min =-.1, max = .4, step=.01),
+sliderInput("K", "Carrying capacity (K):", 100,
+              min = 25, max = 200),
+numericInput("N0", "Initial number N0:", 10,
+              min = 1, max = 200),
+sliderInput("Tmax", "Tmax:", 200,
+              min = 1, max = 500),
+sliderInput("theta", "Scaling parameter (theta):", 1,
+              min =-2, max = 4, step=.1)
+),
+
+mainPanel(tabsetPanel(
+  tabPanel("Simulation", plotOutput("plot1", height = 500)),
+  tabPanel("Details",
+    withMathJax(
+                helpText("MODEL:"),
+            helpText("$$N_{t+1} = N_t + rN_t (1- N_t/K))$$"),
+            helpText("REFERENCE:"),
+       helpText(eval(Attr2))
+)
+)
+)
+)
+),
+
+# This creates the 'behind the scenes' code (Server)
+server = function(input, output) {
+ thetalogist = function(r, K, theta, length = 200, N0=70){
+  N =  rep(NA, length) #set up the empty vector of the right length
+  N[1] = N0 #setting the abundance at time 1 to N0
+
+  for(i in 2:length){ #iteratively updating the growth model.
+                    #next abundance is determined by previous abundance
+    N[i] = N[i-1]+r*N[i-1]*((K-N[i-1])/K)^theta
+    }
+  return(N) #returning the simulated vector
+  }
+
+
+
+  output$plot1 <- renderPlot({
+
+    N= thetalogist(r=input$r, K=input$K, theta=input$theta, length=input$Tmax, N0=input$N0)
+    time = 1:input$Tmax
+    par(mfrow=c(1,2),las=1)
+     plot(N, xlab = "Time t", ylab = "", type="l", lwd=2, col=4,main="Population size",ylim=c(0,max(N)) ) # making a time series plot
+     mtext(expression(N[t]),side=2,line=3,las=1)
+    plot(N, input$r*((input$K-N)/input$K)^input$theta, type="l", xlab = "Population size N", ylab = "",  lwd=2, col=4, main="Per capita growth rate") # 
+  mtext(expression(dN/Ndt),side=2,line=1,las=1)
+    #abline(a=0, b=1) # adding the 1-to-1 line
+#points(N[1:(input$Tmax-1)],N[2:input$Tmax], col = "red") # adding the points
+# from the simulation to the graph
+#lines(N[1:(input$Tmax-1)], N[2:input$Tmax], col = "red") # adding the line to connect the points
+   })
+},
+options = list(height = 600)
+)
+
+```
+
+
+Anta først at $\theta=1$ (logistisk vekst):
+1. Hva er hovedforskjellen på denne modellen og modellen for eksponensiell vekst?  Hvilke biologiske prosesser kan ligge til grunn for denne dynamikken?
+
+2. Hva er forskjellen på iboende og per kapita vekstrate? Når er disse to like? 
+
+3. To insektspopulasjoner har begge bærekapasitet $K=150$. Den ene har nå 10 individer og en iboende vekstrate på $r=0.3$, mens den andre populasjonen har 100 individer og iboende vekstrate $r=0.1$.  Hvilken av disse populasjonene når bærekapasiteten først? Beskriv hvordan populasjonene vokser mot bærekapasiteten. Hvor raskt vokser hver av dem på det raskeste?  
+
+4. Hva skjer med dynamikken ettersom $r$ øker? Hvilken type arter/livshistorier kjennetegnes ved høy/lav iboende vekstrate? 
+
+Utforsk deretter modellen for andre verdier av $\theta$:
+
+5. Hvordan endres  per kapita vekstrate som funksjon av $N$ for ulike verdier av $\theta$? Hva kan dette indikere om livshistorien til populasjonen og evnen til å motstå forstyrrelser?  
+
+6. To insektspopulasjoner har begge bærekapasitet $K=100$ og iboende vekstrate $r=0.5$, men den ene har $\theta=1$ og den andre $\theta=0.4$. Hvilken av disse populasjonene vokser raskest?
+ 
+<br>
+
+
+###Oppgave 3: Aldersstrukturert vekst
+Individer i en populasjon varierer ofte på grunn av alder, størrelse, eller andre faktorer som påvirker deres livssyklus. Slik variasjon påvirker populasjonsveksten, og kan studeres med matrisemodeller, som forklart i Krebs. Leslie-matriser er aldersstrukturerte, og beskriver hvordan antall individer i hver aldersklasse endres fra år til år (eller et annet tidssteg). Populasjonen beskrives som en vektor $[n_1, n_2,...,n_k]$, der $n_1$ er antall individer i aldersklasse 1 (den første klassen), $n_2$ i aldersklasse 2 osv, slik at total populasjonsstørrelse er $N=\sum_{i=1}^kn_i$. Dersom $F_i$ er gjennomsnittlig antall avkom per individ i aldersklasse $i$, er det totale antallet i aldersklasse 1 neste år gitt ved:
+
+$$n_{1,t+1}=\sum_{i=1}^kn_{i,t}F_i.$$
+Antallet individer i aldersklassene 2-4 neste år tilsvarer de som overlevde fra året før: 
+
+$$n_{2,t+1}=n_{1,t}P_1,$$
+$$n_{3,t+1}=n_{2,t}P_2,$$
+$$n_{4,t+1}=n_{3,t}P_3+n_{4,t}P_4.$$
+Siden den siste aldersklassen består av alle som er fire år eller eldre, bidrar også de som overlever og blir værende i klassen. Simuleringene under returnerer populasjonsvekst i hver aldersklasse for en populasjon der alle individer som er eldre enn fire år har de samme verdiene for fekunditet og overlevelse. Du kan endre på vektorene for overlevelse $P_i$ og fekunditet $F_i$ i panelet til venstre, samt startverdien i hver aldersklasse.
+
+
+```{r, echo=FALSE}
+#' @details
+#' Launch app for details
+#' @examples
+#' \dontrun{Ricker.app}
+#' @export
+shinyApp(
+# This creates the User Interface (UI)
+ui = pageWithSidebar(
+headerPanel(""),
+sidebarPanel(
+  textInput("Fi", 'Fecundity vector', "0,0,2,0.9"),
+  textInput("Pi", 'Survival vector', "0.4,0.8,0.9,0.7"),
+  textInput("N0", "Initial population vector", "10,10,10,10"),
+sliderInput("Tmax", "Tmax:", 30,
+              min = 1, max = 100)
+),
+
+mainPanel(
+ plotOutput("plot1", height = 400)
+)
+),
+
+# This creates the 'behind the scenes' code (Server)
+server = function(input, output) {
+ leslie.growth = function(Fi, Pi, tmax = 100, N0=c(10,10,10)){
+   n<-length(Fi)
+   Amat<-matrix(0,n,n)
+   Amat[1,]<-Fi 
+   for(i in 1:(n-1)){
+     Amat[i+1,i]<-Pi[i]
+   }
+   Amat[n,n]<-Pi[n] 
+  N =  matrix(NA, nrow=length(Fi),ncol=tmax) #set up the empty matrix of the right length
+  N[,1] = N0 #setting the abundance at time 1 to N0
+  for(i in 2:tmax){ #iteratively updating the growth model.
+                    #next abundance is determined by previous abundance
+    N[,i] = Amat%*%N[,i-1]
+    }
+  return(N) #returning the simulated matrix
+  }
+
+  output$plot1 <- renderPlot({
+    N= leslie.growth(Fi=as.numeric(unlist(strsplit(input$Fi,","))), Pi = as.numeric(unlist(strsplit(input$Pi,","))), tmax =input$Tmax, N0=as.numeric(unlist(strsplit(input$N0,","))))
+    time = 1:input$Tmax
+    sumN<-apply(N,2,sum)
+    par(mfrow=c(1,2),las=0)
+     matplot(t(N), xlab = "Time t", ylab = "", type="l",lwd=2,col=1:4,main="Age classes" ) # making a time series plot
+     mtext(expression(N[t]),side=2,line=2,las=0)
+     legend("topleft",c("Age 1", "Age 2", "Age 3", "Age >= 4"),lwd=2,lty=1:4,col=1:4)
+    barplot(N[,input$Tmax]/sum(N[,input$Tmax]),col=1:4, ylim=c(0,1),main="Stable distribution" )
+    mtext(side=1,c("Age 1", "Age 2", "Age 3", "Age 4+"),at=seq(0.7,4.3 ,length=4))
+   #plot(sumN,type="l",ylim=c(0,max(sumN)),lwd=2,main="Total population" )
+   })
+},
+options = list(height = 600)
+)
+
+```
+
+
+1. Beskriv populasjonsdynamikken. Hva skjer med hver aldersklasse etter kort tid, og etter lengre tid? Hva skjer hvis du endrer startverdiene? Hvilken type populasjonsmodell likner dette på av de du nå har sett på? 
+
+2. Hvilken av aldersklassene har flest individer etter lang tid? Hvilken har minst? Kan du gi en biologisk forklaring på hvorfor? 
+
+3. Med utgangspunkt i de oppgitte parametrene ($F_i=[0, 0, 2, 0.9]$ og $P_i=[0.4, 0.8, 0.9, 0.7]$), hvor mye må du redusere fekunditeten i den siste aldersklassen før populasjonsvekstraten blir 0 (ca)? Hvor mye må du redusere overlevelsen i hver av klassene før veksten er ca 0? 
+
+4. Hvis du var en forvalter av denne populasjonen og skulle sette en årlig kvote for jakt for hver aldersklasse (anta at jegerne kan se forskjell på ulike aldre), hva er din anbefaling? Hva slags endringer kan (intensiv) jakt føre til i populasjonen som modellen ikke tar hensyn til? Hvilke andre faktorer tar ikke modellen hensyn til som kan være relevante for forvaltning?
+ 
+Svar: Hvis man kun høster av den første klassen kan man ta ut ca 33% før overlevelsen blir så lav at populasjonsveksten er 0.  I de andre klassene er tilsvarende tall ca 33%, 58%, og 60%. Men man må også ta hensyn til andelen individer i hver aldersklasse. Ved høsting av klasse 1 vil denne fremdeles utgjøre en andel på over 40% av populasjonen, noe som betyr at antallet individer man tar ut blir større. For aldersklasse 2 og 3 vil det kun være ca 18% (med høsting på hhv 33$ og 58%), mens klasse 4 vil utgjøre ca 20% etter høsting. Dersom populasjonen består av 1000 individer og man kun kan høste 1 aldersklasse om gangen kan man da høste ca 145 i klasse 1,  59 i klasse 2, 104 i klasse 3, eller 120 i klasse 4.  For å maksimere antall høstede individer er det altså lurt å ha kvote på ettåringene, men det kan også være mange andre forhold å ta hensyn til. Intensiv jakt utgjør et seleksjonstrykk som kan føre til evolusjonære endringer over tid, dersom det er genetisk variasjon tilstede. For eksempel kan intensiv jakt på individer i reproduktiv alder føre til tidligere kjønnsmodning.
+
+
+```{r, echo=FALSE}
+#' Launch a shiny-app simulating the Lotka-Volterra competition model
+#' @details
+#' Launch app for details
+#' @examples
+#' \dontrun{LVcomp.app}
+#' @export
+shinyApp(ui = fluidPage(
+# This creates the User Interface (UI)
+  tags$head(tags$style(
+    HTML('
+         #sidebar1 {
+            background-color: #D3D3D3;
+        }
+    
+    #sidebar2 {
+      background-color: #ECECEC
+    }')
+  )),
+titlePanel("Lotka-Volterra competition model"),
+fluidRow(
+column(4, id = "sidebar2",
+fluidRow(column(5, id = "sidebar1",
+sliderInput("r1", "r1:", 0.3,
+               min = 0, max = 1, step=0.01),
+sliderInput("a", "alpha12:", 0.3,
+               min = 0, max = 1, step=0.01),
+sliderInput("K1", "K1:", 150,
+               min = 0, max = 300, step=1),
+numericInput("N1", "initial N1:", 10,
+               min = 0, max = 1000)),
+column(5, offset = 1, id = "sidebar1",
+sliderInput("r2", "r2:", 0.5,
+               min = 0, max = 1, step=0.01),
+sliderInput("b", "alpha21:", 0.7,
+               min = 0, max = 1, step=0.01),
+sliderInput("K2", "K2:", 100,
+               min = 0, max = 300, step=1),
+numericInput("N2", "initial N2:", 15,
+               min = 0, max = 1000)),
+column(1)),
+fluidRow(
+column(6, offset = 3, id = "sidebar1",
+numericInput("Tmax", "Tmax:", 100,
+               min = 0, max = 200)),
+column(3))
+),
+column(8,  tabsetPanel(
+      tabPanel("Simulation", plotOutput("plot1")), 
+      tabPanel("Details", 
+           withMathJax(
+            helpText("MODEL:"),
+            helpText("Species 1 $$\\frac{dN_1}{dt} = r_1 N_1 (\\frac{K_1-N_1-\\alpha_{12} N_2}{K_1})$$"),
+            helpText("Species 2 $$\\frac{dN_2}{dt} = r_2 N_2 (\\frac{K_2-N_2-\\alpha_{21} N_1}{K_2})$$"),
+          helpText("N_1-isocline $$N_2 = \\frac{K_1 - N_1}{\\alpha_{12}}$$"),
+          helpText("N_2-isocline $$N_2 = K_2 - \\alpha_{21} N_1$$"),
+          helpText("Equilibria $$N_1^* = \\frac{K_1-\\alpha_{12} K_2}{1-\\alpha_{12} \\alpha_{21},
+           N_2^* = \\frac{K_2-\\alpha_{21} K_1}{1-\\alpha_{12} \\alpha_{21}}$$")),
+           helpText(eval(Attr))
+           )
+  )
+))
+),
+
+
+
+# This creates the "behind the scenes" code (Server)
+server = function(input, output) {
+require(deSolve)
+require(phaseR)
+compLV=function(t, y, parameters){
+   N1=y[1]
+   N2=y[2]
+
+   with(as.list(parameters),{
+   dN1 = r1*N1*((K1-N1-a*N2)/K1)
+   dN2 = r2*N2*((K2-N2-b*N1)/K2)
+   res=c(dN1, dN2)
+   list(res)
+})
+}
+
+output$plot1 <- renderPlot({
+N1star=(input$K1-input$a*input$K2)/(1-input$a*input$b)
+N2star=(input$K2-input$b*input$K1)/(1-input$a*input$b)
+
+
+times  = seq(0, input$Tmax, by=0.1)
+parms=c(r1=input$r1, r2=input$r2,a=input$a,b=input$b,
+K1=input$K1,K2=input$K2)
+xstart = c(N1=input$N1, N2=input$N2)
+
+out=ode(y=xstart,
+   times=times,
+   func=compLV,
+   parms=parms)
+
+   out=as.data.frame(out)
+
+
+par(mfrow=c(1,2))  #This puts two plots side by side each other
+plot(times, out$N1, ylab="abundance", xlab="time", type="l",
+ylim=range(out[,2:3]))
+lines(times, out$N2, col="red")
+   legend("topright",
+         legend=c("N1", "N2"),
+         lty=c(1,1),
+          col=c("black", "red"))
+
+plot(NA,xlim=c(0,input$K1*2),ylim=c(0,input$K2*2), xlab="N1", ylab="N2")
+fld=flowField(compLV, xlim=c(0,input$K1*2), ylim=c(0,input$K2*2), 
+parameters=parms, system="two.dim", add=TRUE)
+
+#null clines
+curve((input$K1-x)/input$a,col="black",add=TRUE)
+curve(input$K2-input$b*x,col="red",add=TRUE)
+abline(v=0,col="black")
+abline(h=0,col="red")
+points(0,0,pch=19)
+points(input$K1,0,pch=19)
+points(0,input$K2,pch=19)
+if(!any(c(N1star, N2star)<0)) points(N1star,N2star,pch=19)
+lines(out[,2], out[,3], lwd=2)
+    })
+   },
+options = list(height = 800)
+)
+
+
+```
+
+
